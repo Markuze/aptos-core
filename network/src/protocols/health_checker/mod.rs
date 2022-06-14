@@ -49,7 +49,7 @@ use rand::{rngs::SmallRng, Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use short_hex_str::AsShortHexStr;
 use std::{collections::hash_map::Entry, time::Duration};
-
+use tracing;
 pub mod builder;
 mod interface;
 #[cfg(test)]
@@ -76,7 +76,10 @@ pub struct HealthCheckerNetworkSender {
     inner: NetworkSender<HealthCheckerMsg>,
 }
 
+
+
 /// Configuration for the network endpoints to support HealthChecker.
+#[tracing::instrument]
 pub fn network_endpoint_config() -> AppConfig {
     AppConfig::p2p(
         [ProtocolId::HealthCheckerRpc],
@@ -98,6 +101,7 @@ impl NewNetworkSender for HealthCheckerNetworkSender {
 }
 
 impl HealthCheckerNetworkSender {
+   #[tracing::instrument(skip(self))]
     pub async fn disconnect_peer(&mut self, peer_id: PeerId) -> Result<(), NetworkError> {
         self.inner.disconnect_peer(peer_id).await
     }
@@ -110,6 +114,7 @@ impl ApplicationNetworkSender<HealthCheckerMsg> for HealthCheckerNetworkSender {
     ///
     /// The rpc request can be canceled at any point by dropping the returned
     /// future.
+    #[tracing::instrument(skip(self))]
     async fn send_rpc(
         &self,
         recipient: PeerId,
@@ -177,12 +182,17 @@ impl HealthChecker {
         }
     }
 
+    #[tracing::instrument(skip(self) target="HealthCheckActorStart" level="debug")]
     pub async fn start(mut self) {
         let mut tick_handlers = FuturesUnordered::new();
+        let span = tracing::span!(tracing::Level::INFO, "HealthCheckActor");
+        _= span.enter();
         info!(
             NetworkSchema::new(&self.network_context),
-            "{} Health checker actor started", self.network_context
+            "{} Health checker actor started. Interval {:?}", self.network_context, self.ping_interval,
         );
+
+        debug!("Hello {}", self.network_context);
 
         let ticker = self.time_service.interval(self.ping_interval);
         tokio::pin!(ticker);
@@ -276,7 +286,7 @@ impl HealthChecker {
                 }
                 res = tick_handlers.select_next_some() => {
                     let (peer_id, round, nonce, ping_result) = res;
-                    self.handle_ping_response(peer_id, round, nonce, ping_result).await;
+                    self.handle_ping_response(peer_id, round, nonce, ping_result).await;//This await hijacks the loop.
                 }
             }
         }
@@ -286,6 +296,7 @@ impl HealthChecker {
         );
     }
 
+    #[tracing::instrument(skip(self))]
     fn handle_ping_request(
         &mut self,
         peer_id: PeerId,
@@ -314,6 +325,7 @@ impl HealthChecker {
         let _ = res_tx.send(Ok(message.into()));
     }
 
+    #[tracing::instrument(skip(self))]
     async fn handle_ping_response(
         &mut self,
         peer_id: PeerId,
@@ -432,6 +444,7 @@ impl HealthChecker {
         }
     }
 
+    #[tracing::instrument(skip(network_tx))]
     async fn ping_peer(
         network_context: NetworkContext,
         network_tx: HealthCheckerNetworkSender,

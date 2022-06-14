@@ -21,7 +21,7 @@ use std::{
 
 #[tokio::test]
 async fn test_connection_limiting() {
-    let mut swarm = new_local_swarm_with_aptos(1).await;
+    let mut swarm = new_local_swarm_with_aptos(6).await;//Change here
     let version = swarm.versions().max().unwrap();
     let validator_peer_id = swarm.validators().next().unwrap().peer_id();
     let vfn_peer_id = swarm
@@ -125,7 +125,9 @@ async fn test_connection_limiting() {
         .wait_until_healthy(Instant::now() + Duration::from_secs(10))
         .await
         .unwrap();
-    tokio::time::sleep(Duration::from_secs(5)).await;
+
+    tokio::time::sleep(Duration::from_secs(3)).await;
+
     assert_eq!(
         1,
         swarm
@@ -136,6 +138,7 @@ async fn test_connection_limiting() {
             .unwrap()
             .unwrap_or(0)
     );
+    assert!(false);
 }
 
 // Currently this test seems flaky: https://github.com/aptos-labs/aptos-core/issues/670

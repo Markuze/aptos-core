@@ -9,7 +9,7 @@
 //! the [`InboundRpcs`] and [`OutboundRpcs`] completion queues), and eventually
 //! shutting down when the [`PeerManager`] requests it or the connection is lost.
 //!
-//! [`Peer`] owns the actual underlying connection socket and is reponsible for
+//! [`Peer`] owns the actual underlying connection socket and is responsible for
 //! the socket's shutdown, graceful or otherwise.
 //!
 //! [`PeerManager`]: crate::peer_manager::PeerManager

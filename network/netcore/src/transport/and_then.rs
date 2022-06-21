@@ -9,6 +9,7 @@ use std::{
     pin::Pin,
     task::{Context, Poll},
 };
+use tracing;
 
 /// An [`AndThen`] is a transport which applies a closure (F) to all connections created by the
 /// underlying transport.
@@ -40,6 +41,7 @@ where
     type Inbound = AndThenFuture<T::Inbound, Fut, F>;
     type Outbound = AndThenFuture<T::Outbound, Fut, F>;
 
+    #[tracing::instrument(skip(self))]
     fn listen_on(
         &self,
         addr: NetworkAddress,
@@ -50,6 +52,7 @@ where
         Ok((listener, addr))
     }
 
+    #[tracing::instrument(skip(self))]
     fn dial(&self, peer_id: PeerId, addr: NetworkAddress) -> Result<Self::Outbound, Self::Error> {
         let fut = self.transport.dial(peer_id, addr.clone())?;
         let origin = ConnectionOrigin::Outbound;
@@ -92,6 +95,7 @@ where
 {
     type Item = Result<(AndThenFuture<Fut1, Fut2, F>, NetworkAddress), E>;
 
+    #[tracing::instrument(skip(self))]
     fn poll_next(mut self: Pin<&mut Self>, context: &mut Context) -> Poll<Option<Self::Item>> {
         match self.as_mut().project().stream.poll_next(context) {
             Poll::Pending => Poll::Pending,
@@ -154,6 +158,7 @@ where
 {
     type Output = Result<O2, E>;
 
+    #[tracing::instrument(skip(self))]
     fn poll(self: Pin<&mut Self>, context: &mut Context) -> Poll<Self::Output> {
         let mut this = self.project();
         loop {

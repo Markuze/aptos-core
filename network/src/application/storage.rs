@@ -29,6 +29,7 @@ impl PeerMetadataStorage {
     }
 
     /// Create a new `PeerMetadataStorage` `NetworkId`s must be known at construction time
+    #[tracing::instrument]
     pub fn new(network_ids: &[NetworkId]) -> Arc<PeerMetadataStorage> {
         let mut peer_metadata_storage = PeerMetadataStorage {
             storage: HashMap::new(),
@@ -52,11 +53,13 @@ impl PeerMetadataStorage {
             .unwrap_or_else(|| panic!("Unexpected network requested: {}", network_id))
     }
 
+    #[tracing::instrument]
     pub fn read(&self, peer_network_id: PeerNetworkId) -> Option<PeerInfo> {
         let network = self.get_network(peer_network_id.network_id());
         network.read(&peer_network_id.peer_id())
     }
 
+    #[tracing::instrument(skip(self,filter))]
     pub fn read_filtered<F: FnMut(&(&PeerId, &PeerInfo)) -> bool>(
         &self,
         network_id: NetworkId,
@@ -68,6 +71,7 @@ impl PeerMetadataStorage {
         )
     }
 
+    #[tracing::instrument]
     pub fn keys(&self, network_id: NetworkId) -> Vec<PeerNetworkId> {
         self.get_network(network_id)
             .keys()
@@ -77,23 +81,27 @@ impl PeerMetadataStorage {
     }
 
     /// Read a clone of the entire state
+    #[tracing::instrument]
     pub fn read_all(&self, network_id: NetworkId) -> HashMap<PeerNetworkId, PeerInfo> {
         to_peer_network_ids(network_id, self.get_network(network_id).read_all())
     }
 
     /// Insert new entry
+    #[tracing::instrument]
     pub fn insert(&self, peer_network_id: PeerNetworkId, new_value: PeerInfo) {
         self.get_network(peer_network_id.network_id())
             .insert(peer_network_id.peer_id(), new_value)
     }
 
     /// Remove old entries
+    #[tracing::instrument]
     pub fn remove(&self, peer_network_id: &PeerNetworkId) {
         self.get_network(peer_network_id.network_id())
             .remove(&peer_network_id.peer_id())
     }
 
     /// Take in a function to modify the data, must handle concurrency control with the input function
+    #[tracing::instrument(skip(self,modifier))]
     pub fn write<F: FnOnce(&mut Entry<PeerId, PeerInfo>) -> Result<(), PeerError>>(
         &self,
         peer_network_id: PeerNetworkId,
@@ -106,6 +114,7 @@ impl PeerMetadataStorage {
     /// Get the underlying `RwLock` of the map.  Usage is discouraged as it leads to the possiblity of
     /// leaving the lock held for a long period of time.  However, not everything fits into the `write`
     /// model.
+    #[tracing::instrument(skip(self))]
     pub fn write_lock(
         &self,
         network_id: NetworkId,
@@ -113,6 +122,7 @@ impl PeerMetadataStorage {
         self.get_network(network_id).write_lock()
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn insert_connection(
         &self,
         network_id: NetworkId,
@@ -124,6 +134,7 @@ impl PeerMetadataStorage {
             .or_insert_with(|| PeerInfo::new(connection_metadata));
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn remove_connection(
         &self,
         network_id: NetworkId,
@@ -141,6 +152,7 @@ impl PeerMetadataStorage {
     }
 }
 
+#[tracing::instrument]
 fn to_peer_network_ids(
     network_id: NetworkId,
     map: HashMap<PeerId, PeerInfo>,
@@ -161,6 +173,7 @@ where
     Key: Clone + Debug + Eq + Hash,
     Value: Clone + Debug,
 {
+    #[tracing::instrument]
     pub fn new() -> Self {
         Self {
             map: RwLock::new(HashMap::new()),
@@ -168,11 +181,13 @@ where
     }
 
     /// Get a clone of the value
+    #[tracing::instrument]
     pub fn read(&self, key: &Key) -> Option<Value> {
         self.map.read().get(key).cloned()
     }
 
     /// Filtered read clone based on keys or values
+    #[tracing::instrument(skip(self,filter))]
     pub fn read_filtered<F: FnMut(&(&Key, &Value)) -> bool>(
         &self,
         filter: F,
@@ -186,16 +201,19 @@ where
     }
 
     /// All keys of the hash map
+    #[tracing::instrument(skip(self))]
     pub fn keys(&self) -> Vec<Key> {
         self.map.read().keys().cloned().collect()
     }
 
     /// Read a clone of the entire state
+    #[tracing::instrument]
     pub fn read_all(&self) -> HashMap<Key, Value> {
         self.map.read().clone()
     }
 
     /// Insert new entry
+    #[tracing::instrument]
     pub fn insert(&self, key: Key, new_value: Value) {
         let mut map = self.map.write();
         map.entry(key)
@@ -204,12 +222,14 @@ where
     }
 
     /// Remove old entries
+    #[tracing::instrument]
     pub fn remove(&self, key: &Key) {
         let mut map = self.map.write();
         map.remove(key);
     }
 
     /// Take in a function to modify the data, must handle concurrency control with the input function
+    #[tracing::instrument(skip(self,modifier))]
     pub fn write<F: FnOnce(&mut Entry<Key, Value>) -> Result<(), PeerError>>(
         &self,
         key: Key,
@@ -222,6 +242,7 @@ where
     /// Get the underlying `RwLock` of the map.  Usage is discouraged as it leads to the possiblity of
     /// leaving the lock held for a long period of time.  However, not everything fits into the `write`
     /// model.
+    #[tracing::instrument]
     pub fn write_lock(&self) -> RwLockWriteGuard<'_, HashMap<Key, Value>> {
         self.map.write()
     }

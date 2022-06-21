@@ -186,6 +186,7 @@ pub struct InboundRpcs {
 }
 
 impl InboundRpcs {
+    #[tracing::instrument]
     pub fn new(
         network_context: NetworkContext,
         time_service: TimeService,
@@ -204,6 +205,7 @@ impl InboundRpcs {
     }
 
     /// Handle a new inbound `RpcRequest` message off the wire.
+    #[tracing::instrument(skip(self))]
     pub fn handle_inbound_request(
         &mut self,
         peer_notifs_tx: &mut aptos_channel::Sender<ProtocolId, PeerNotification>,
@@ -286,6 +288,7 @@ impl InboundRpcs {
     /// Method for `Peer` actor to drive the pending inbound rpc tasks forward.
     /// The returned `Future` is a `FusedFuture` so it works correctly in a
     /// `futures::select!`.
+    #[tracing::instrument(skip(self))]
     pub fn next_completed_response(
         &mut self,
     ) -> impl Future<Output = Result<RpcResponse, RpcError>> + FusedFuture + '_ {
@@ -295,6 +298,7 @@ impl InboundRpcs {
     /// Handle a completed response from the application handler. If successful,
     /// we update the appropriate counters and enqueue the response message onto
     /// the outbound write queue.
+    #[tracing::instrument(skip(self,write_reqs_tx))]
     pub async fn send_outbound_response(
         &mut self,
         write_reqs_tx: &mut channel::Sender<(
@@ -381,6 +385,7 @@ impl OutboundRpcs {
     }
 
     /// Handle a new outbound rpc request from the application layer.
+    #[tracing::instrument(skip(self, write_reqs_tx))]
     pub async fn handle_outbound_request(
         &mut self,
         request: OutboundRpcRequest,
@@ -516,6 +521,7 @@ impl OutboundRpcs {
     /// Method for `Peer` actor to drive the pending outbound rpc tasks forward.
     /// The returned `Future` is a `FusedFuture` so it works correctly in a
     /// `futures::select!`.
+    #[tracing::instrument(skip(self))]
     pub fn next_completed_request(
         &mut self,
     ) -> impl Future<Output = (RequestId, Result<(f64, u64), RpcError>)> + FusedFuture + '_ {
@@ -525,6 +531,7 @@ impl OutboundRpcs {
     /// Handle a newly completed task from the `self.outbound_rpc_tasks` queue.
     /// At this point, the application layer's request has already been fulfilled;
     /// we just need to clean up this request and update some counters.
+    #[tracing::instrument(skip(self))]
     pub fn handle_completed_request(
         &mut self,
         request_id: RequestId,
@@ -580,6 +587,7 @@ impl OutboundRpcs {
     /// with a matching request id in the `pending_outbound_rpcs` map, this will
     /// trigger that corresponding task to wake up and complete in
     /// `handle_completed_request`.
+    #[tracing::instrument(skip(self))]
     pub fn handle_inbound_response(&mut self, response: RpcResponse) {
         let network_context = &self.network_context;
         let peer_id = &self.remote_peer_id;

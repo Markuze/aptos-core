@@ -41,6 +41,7 @@ impl PeerManagerRequestSender {
     /// The function returns when the message has been enqueued on the network actor's event queue.
     /// It therefore makes no reliable delivery guarantees. An error is returned if the event queue
     /// is unexpectedly shutdown.
+    #[tracing::instrument]
     pub fn send_to(
         &self,
         peer_id: PeerId,
@@ -64,7 +65,8 @@ impl PeerManagerRequestSender {
     ///
     /// The function returns when all send requests have been enqueued on the network
     /// actor's event queue. It therefore makes no reliable delivery guarantees.
-    /// An error is returned if the event queue is unexpectedly shutdown.
+    /// An error is returned if the event queue is unexpectedly shutdown.\
+    #[tracing::instrument(skip(recipients))]
     pub fn send_to_many(
         &self,
         recipients: impl Iterator<Item = PeerId>,

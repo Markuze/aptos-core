@@ -47,6 +47,7 @@ pub struct NoiseStream<TSocket> {
 
 impl<TSocket> NoiseStream<TSocket> {
     /// Create a NoiseStream from a socket and a noise post-handshake session
+    #[tracing::instrument(skip(socket))]
     pub fn new(socket: TSocket, session: noise::NoiseSession) -> Self {
         Self {
             socket,
@@ -89,6 +90,7 @@ impl<TSocket> NoiseStream<TSocket>
 where
     TSocket: AsyncRead + Unpin,
 {
+    #[tracing::instrument(skip(self))]
     fn poll_read(&mut self, context: &mut Context, buf: &mut [u8]) -> Poll<io::Result<usize>> {
         loop {
             trace!("NoiseStream ReadState::{:?}", self.read_state);
@@ -232,6 +234,7 @@ impl<TSocket> NoiseStream<TSocket>
 where
     TSocket: AsyncWrite + Unpin,
 {
+    #[tracing::instrument(skip(self))]
     fn poll_write_or_flush(
         &mut self,
         context: &mut Context,
@@ -365,6 +368,7 @@ where
         }
     }
 
+    #[tracing::instrument(skip(self))]
     fn poll_write(&mut self, context: &mut Context, buf: &[u8]) -> Poll<io::Result<usize>> {
         if let Some(bytes_written) = ready!(self.poll_write_or_flush(context, Some(buf)))? {
             Poll::Ready(Ok(bytes_written))
@@ -373,6 +377,7 @@ where
         }
     }
 
+    #[tracing::instrument(skip(self))]
     fn poll_flush(&mut self, context: &mut Context) -> Poll<io::Result<()>> {
         if ready!(self.poll_write_or_flush(context, None))?.is_none() {
             Poll::Ready(Ok(()))
@@ -460,6 +465,7 @@ impl ::std::fmt::Debug for NoiseBuffers {
 //
 
 /// Write an offset of a buffer to a socket, only returns Ready once done.
+#[tracing::instrument(skip(context,socket))]
 fn poll_write_all<TSocket>(
     context: &mut Context,
     mut socket: Pin<&mut TSocket>,
@@ -491,6 +497,7 @@ where
 /// 1) Ok(None) => EOF; remote graceful shutdown
 /// 2) Err(UnexpectedEOF) => read 1 byte then hit EOF; remote died
 /// 3) Ok(Some(n)) => new frame of length n
+#[tracing::instrument(skip(context,socket))]
 fn poll_read_u16frame_len<TSocket>(
     context: &mut Context,
     socket: Pin<&mut TSocket>,
@@ -515,6 +522,7 @@ where
 /// continuously calls poll_read on the socket until enough data is read.
 /// It is possible that this function never completes,
 /// so a timeout needs to be set on the caller side.
+#[tracing::instrument(skip(context,socket))]
 fn poll_read_exact<TSocket>(
     context: &mut Context,
     mut socket: Pin<&mut TSocket>,

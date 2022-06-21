@@ -55,6 +55,7 @@ where
     TTransport::Outbound: 'static,
     TSocket: AsyncRead + AsyncWrite + 'static,
 {
+    #[tracing::instrument(skip(transport,transport_reqs_rx,transport_notifs_tx))]
     pub fn new(
         network_context: NetworkContext,
         time_service: TimeService,
@@ -86,6 +87,7 @@ where
         )
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn listen(mut self) {
         let mut pending_inbound_connections = FuturesUnordered::new();
         let mut pending_outbound_connections = FuturesUnordered::new();
@@ -124,6 +126,7 @@ where
     }
 
     /// Make an inbound request upgrade future e.g. Noise handshakes
+    #[tracing::instrument(skip(self,incoming_connection))]
     fn upgrade_inbound_connection(
         &self,
         incoming_connection: Result<(TTransport::Inbound, NetworkAddress), TTransport::Error>,
@@ -167,6 +170,7 @@ where
     }
 
     /// Make an outbound request upgrade future e.g. Noise handshakes
+    #[tracing::instrument(skip(self))]
     fn dial_peer(
         &self,
         dial_peer_request: TransportRequest,
@@ -219,6 +223,7 @@ where
     }
 
     /// Notifies `PeerManager` of a completed or failed outbound connection
+    #[tracing::instrument(skip(self,upgrade))]
     async fn handle_completed_outbound_upgrade(
         &mut self,
         upgrade: Result<Connection<TSocket>, TTransport::Error>,
@@ -290,6 +295,7 @@ where
     }
 
     /// Notifies `PeerManager` of a completed or failed inbound connection
+    #[tracing::instrument(skip(self,upgrade))]
     async fn handle_completed_inbound_upgrade(
         &mut self,
         upgrade: Result<Connection<TSocket>, TTransport::Error>,
@@ -328,6 +334,7 @@ where
     }
 
     /// Send a newly completed connection to `PeerManager`
+    #[tracing::instrument(skip(self,connection))]
     async fn send_connection_to_peer_manager(
         &mut self,
         connection: Connection<TSocket>,

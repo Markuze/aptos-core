@@ -25,6 +25,7 @@ impl Transport for MemoryTransport {
     type Inbound = future::Ready<Result<Self::Output, Self::Error>>;
     type Outbound = future::Ready<Result<Self::Output, Self::Error>>;
 
+    #[tracing::instrument]
     fn listen_on(
         &self,
         addr: NetworkAddress,
@@ -50,6 +51,7 @@ impl Transport for MemoryTransport {
         Ok((Listener::new(listener), listen_addr))
     }
 
+    #[tracing::instrument]
     fn dial(&self, _peer_id: PeerId, addr: NetworkAddress) -> Result<Self::Outbound, Self::Error> {
         let (port, _addr_suffix) = parse_memory(addr.as_slice()).ok_or_else(|| {
             io::Error::new(
@@ -82,6 +84,7 @@ impl Listener {
 impl Stream for Listener {
     type Item = io::Result<(future::Ready<io::Result<MemorySocket>>, NetworkAddress)>;
 
+    #[tracing::instrument]
     fn poll_next(mut self: Pin<&mut Self>, context: &mut Context) -> Poll<Option<Self::Item>> {
         let mut incoming = self.inner.incoming();
         match Pin::new(&mut incoming).poll_next(context) {

@@ -77,15 +77,18 @@ impl<TMessage: Clone + Message + Send, Sender: ApplicationNetworkSender<TMessage
         }
     }
 
+    #[tracing::instrument(skip(self))]
     fn sender(&self, network_id: &NetworkId) -> &Sender {
         self.senders.get(network_id).expect("Unknown NetworkId")
     }
 
+    #[tracing::instrument(skip(self,message))]
     pub fn send_to(&self, recipient: PeerNetworkId, message: TMessage) -> Result<(), NetworkError> {
         self.sender(&recipient.network_id())
             .send_to(recipient.peer_id(), message)
     }
 
+    #[tracing::instrument(skip(self,recipients,message))]
     pub fn send_to_many(
         &self,
         recipients: impl Iterator<Item = PeerNetworkId>,
@@ -101,6 +104,7 @@ impl<TMessage: Clone + Message + Send, Sender: ApplicationNetworkSender<TMessage
         Ok(())
     }
 
+    #[tracing::instrument(skip(self,req_msg))]
     pub async fn send_rpc(
         &self,
         recipient: PeerNetworkId,

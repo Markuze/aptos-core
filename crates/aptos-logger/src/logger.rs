@@ -45,10 +45,13 @@ pub(crate) fn enabled(metadata: &Metadata) -> bool {
         .unwrap_or(false)
 }
 
-fn setup_flame_global_subscriber(){
+use backtrace::Backtrace;
+
+fn setup_flame_global_subscriber() {
     let fmt_layer = fmt::Layer::default();
 
-    let (flame_layer, flame) = FlameLayer::with_file("/tmp/tracing.folded").unwrap();
+    let (mut flame_layer, flame) = FlameLayer::with_file("/tmp/tracing.folded").unwrap();
+    //flame_layer = flame_layer.with_file_and_line(false);
 
     if FLAME.set(flame).is_err() {
         eprintln!("Global logger has already been set");
@@ -58,6 +61,9 @@ fn setup_flame_global_subscriber(){
         .with(fmt_layer)
         .with(flame_layer)
         .init();
+    let bt = Backtrace::new();
+    println!("{:?}", bt);
+
 }
 
 /// Sets the global `Logger` exactly once

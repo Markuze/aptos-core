@@ -209,6 +209,7 @@ impl NoiseUpgrader {
     /// In mutual auth scenarios, we will also include an anti replay attack counter in the
     /// Noise handshake payload. Currently this counter is always a millisecond-
     /// granularity unix epoch timestamp.
+    #[tracing::instrument(skip(self,socket,time_provider))]
     pub async fn upgrade_outbound<TSocket, F>(
         &self,
         mut socket: TSocket,
@@ -294,7 +295,8 @@ impl NoiseUpgrader {
     /// requires mutual authentication, we will only allow connections from peers
     /// that successfully authenticate to a public key in our `trusted_peers` set.
     /// In addition, we will expect the client to include an anti replay attack
-    /// counter in the Noise handshake payload in mutual auth scenarios.
+    /// counter in the Noise handshake payload in mutual auth scenarios.\
+    #[tracing::instrument(skip(self,socket))]
     pub async fn upgrade_inbound<TSocket>(
         &self,
         mut socket: TSocket,
@@ -441,6 +443,7 @@ impl NoiseUpgrader {
         Ok((NoiseStream::new(socket, session), remote_peer_id, peer_role))
     }
 
+    #[tracing::instrument]
     fn authenticate_inbound(
         remote_peer_short: ShortHexStr,
         peer: &Peer,

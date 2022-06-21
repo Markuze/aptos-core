@@ -304,6 +304,7 @@ where
     TBackoff: Iterator<Item = Duration> + Clone,
 {
     /// Creates a new instance of the [`ConnectivityManager`] actor.
+    #[tracing::instrument(skip(requests_rx,backoff_strategy))]
     pub fn new(
         network_context: NetworkContext,
         time_service: TimeService,
@@ -355,6 +356,7 @@ where
     }
 
     /// Starts the [`ConnectivityManager`] actor.
+    #[tracing::instrument(skip(self))]
     pub async fn start(mut self) {
         // The ConnectivityManager actor is interested in 3 kinds of events:
         // 1. Ticks to trigger connecitvity check. These are implemented using a clock based
@@ -423,6 +425,7 @@ where
     /// For instance, a validator might leave the validator set after a
     /// reconfiguration. If we are currently connected to this validator, calling
     /// this function will close our connection to it.
+    #[tracing::instrument(skip(self))]
     async fn close_stale_connections(&mut self) {
         let eligible = self.eligible.read().clone();
         let stale_connections: Vec<_> = self
@@ -470,6 +473,7 @@ where
     /// For instance, a validator might leave the validator set after a
     /// reconfiguration. If there is a pending dial to this validator, calling
     /// this function will remove it from the dial queue.
+    #[tracing::instrument(skip(self))]
     async fn cancel_stale_dials(&mut self) {
         let eligible = self.eligible.read().clone();
         let stale_dials: Vec<_> = self
@@ -490,6 +494,7 @@ where
         }
     }
 
+    #[tracing::instrument(skip(self))]
     fn dial_eligible_peers<'a>(
         &'a mut self,
         pending_dials: &'a mut FuturesUnordered<BoxFuture<'static, PeerId>>,
@@ -500,6 +505,7 @@ where
         }
     }
 
+    #[tracing::instrument(skip(self))]
     fn choose_peers_to_dial(&mut self) -> Vec<(PeerId, DiscoveredPeer)> {
         let network_id = self.network_context.network_id();
         let role = self.network_context.role();
@@ -552,6 +558,7 @@ where
             .collect()
     }
 
+    #[tracing::instrument(skip(self))]
     fn queue_dial_peer<'a>(
         &'a mut self,
         peer_id: PeerId,
@@ -623,6 +630,7 @@ where
     // Note: We do not check that the connections to older incarnations of a node are broken, and
     // instead rely on the node moving to a new epoch to break connections made from older
     // incarnations.
+    #[tracing::instrument(skip(self))]
     async fn check_connectivity<'a>(
         &'a mut self,
         pending_dials: &'a mut FuturesUnordered<BoxFuture<'static, PeerId>>,
@@ -651,12 +659,14 @@ where
         self.dial_eligible_peers(pending_dials);
     }
 
+    #[tracing::instrument(skip(self))]
     fn reset_dial_state(&mut self, peer_id: &PeerId) {
         if let Some(dial_state) = self.dial_states.get_mut(peer_id) {
             *dial_state = DialState::new(self.backoff_strategy.clone());
         }
     }
 
+    #[tracing::instrument(skip(self))]
     fn handle_request(&mut self, req: ConnectivityRequest) {
         trace!(
             NetworkSchema::new(&self.network_context),
@@ -684,6 +694,7 @@ where
         }
     }
 
+    #[tracing::instrument(skip(self))]
     fn handle_update_discovered_peers(
         &mut self,
         src: DiscoverySource,
@@ -788,6 +799,7 @@ where
         }
     }
 
+    #[tracing::instrument(skip(self))]
     fn handle_control_notification(&mut self, notif: peer_manager::ConnectionNotification) {
         trace!(
             NetworkSchema::new(&self.network_context),
@@ -838,6 +850,7 @@ where
         }
     }
 
+    #[tracing::instrument(skip(self))]
     async fn report_network_metrics(&self) {
         if aptos_telemetry::is_disabled() {
             return;
@@ -917,6 +930,7 @@ where
     }
 }
 
+#[tracing::instrument]
 fn log_dial_result(
     network_context: NetworkContext,
     peer_id: PeerId,

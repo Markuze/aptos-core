@@ -12,7 +12,7 @@ pub async fn new_local_swarm(
 ) -> LocalSwarm {
     static FACTORY: Lazy<LocalFactory> = Lazy::new(|| LocalFactory::from_workspace().unwrap());
 
-    //::aptos_logger::Logger::new().init();
+    ::aptos_logger::Logger::new().init();
     let version = FACTORY.versions().max().unwrap();
 
     FACTORY

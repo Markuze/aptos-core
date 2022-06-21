@@ -163,6 +163,7 @@ pub trait NewNetworkEvents {
 }
 
 impl<TMessage: Message> NewNetworkEvents for NetworkEvents<TMessage> {
+    #[tracing::instrument]
     fn new(
         peer_mgr_notifs_rx: aptos_channel::Receiver<(PeerId, ProtocolId), PeerManagerNotification>,
         connection_notifs_rx: aptos_channel::Receiver<PeerId, ConnectionNotification>,
@@ -194,6 +195,7 @@ impl<TMessage> Stream for NetworkEvents<TMessage> {
 
 /// Deserialize inbound direct send and rpc messages into the application `TMessage`
 /// type, logging and dropping messages that fail to deserialize.
+#[tracing::instrument]
 fn peer_mgr_notif_to_event<TMessage: Message>(
     notif: PeerManagerNotification,
 ) -> future::Ready<Option<Event<TMessage>>> {
@@ -210,6 +212,7 @@ fn peer_mgr_notif_to_event<TMessage: Message>(
 }
 
 /// Converts a `SerializedRequest` into a network `Event` for sending to other nodes
+#[tracing::instrument(skip(request))]
 fn request_to_network_event<TMessage: Message, Request: SerializedRequest>(
     peer_id: PeerId,
     request: &Request,
@@ -288,6 +291,7 @@ impl<TMessage> NewNetworkSender for NetworkSender<TMessage> {
 impl<TMessage> NetworkSender<TMessage> {
     /// Request that a given Peer be dialed at the provided `NetworkAddress` and
     /// synchronously wait for the request to be performed.
+    #[tracing::instrument(skip(self))]
     pub async fn dial_peer(&self, peer: PeerId, addr: NetworkAddress) -> Result<(), NetworkError> {
         self.connection_reqs_tx.dial_peer(peer, addr).await?;
         Ok(())
@@ -295,6 +299,7 @@ impl<TMessage> NetworkSender<TMessage> {
 
     /// Request that a given Peer be disconnected and synchronously wait for the request to be
     /// performed.
+    #[tracing::instrument(skip(self))]
     pub async fn disconnect_peer(&self, peer: PeerId) -> Result<(), NetworkError> {
         self.connection_reqs_tx.disconnect_peer(peer).await?;
         Ok(())
@@ -304,6 +309,7 @@ impl<TMessage> NetworkSender<TMessage> {
 impl<TMessage: Message> NetworkSender<TMessage> {
     /// Send a protobuf message to a single recipient. Provides a wrapper over
     /// `[peer_manager::PeerManagerRequestSender::send_to]`.
+    #[tracing::instrument(skip(self,message))]
     pub fn send_to(
         &self,
         recipient: PeerId,
@@ -317,6 +323,7 @@ impl<TMessage: Message> NetworkSender<TMessage> {
 
     /// Send a protobuf message to a many recipients. Provides a wrapper over
     /// `[peer_manager::PeerManagerRequestSender::send_to_many]`.
+    #[tracing::instrument(skip(self,recipients,message))]
     pub fn send_to_many(
         &self,
         recipients: impl Iterator<Item = PeerId>,
@@ -333,6 +340,7 @@ impl<TMessage: Message> NetworkSender<TMessage> {
     /// Send a protobuf rpc request to a single recipient while handling
     /// serialization and deserialization of the request and response respectively.
     /// Assumes that the request and response both have the same message type.
+    #[tracing::instrument(skip(self,req_msg))]
     pub async fn send_rpc(
         &self,
         recipient: PeerId,

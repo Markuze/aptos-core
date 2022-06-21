@@ -10,6 +10,7 @@ use netcore::framing::{read_u16frame, write_u16frame};
 use std::io;
 
 /// The Handshake exchange protocol.
+#[tracing::instrument(skip(socket))]
 pub async fn exchange_handshake<T>(
     own_handshake: &HandshakeMsg,
     socket: &mut T,

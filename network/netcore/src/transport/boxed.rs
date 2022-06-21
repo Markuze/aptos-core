@@ -27,6 +27,7 @@ where
     T::Outbound: Send + 'static,
     E: ::std::error::Error + Send + Sync + 'static,
 {
+    #[tracing::instrument(skip(self))]
     fn listen_on(&self, addr: NetworkAddress) -> Result<(Listener<O, E>, NetworkAddress), E> {
         let (listener, addr) = self.listen_on(addr)?;
         let listener = listener
@@ -34,6 +35,7 @@ where
         Ok((listener.boxed() as Listener<O, E>, addr))
     }
 
+    #[tracing::instrument(skip(self))]
     fn dial(&self, peer_id: PeerId, addr: NetworkAddress) -> Result<Outbound<O, E>, E> {
         let outgoing = self.dial(peer_id, addr)?;
         Ok(outgoing.boxed() as Outbound<O, E>)
@@ -72,6 +74,7 @@ where
     type Inbound = Inbound<O, E>;
     type Outbound = Outbound<O, E>;
 
+    #[tracing::instrument(skip(self))]
     fn listen_on(
         &self,
         addr: NetworkAddress,
@@ -79,6 +82,7 @@ where
         self.inner.listen_on(addr)
     }
 
+    #[tracing::instrument(skip(self))]
     fn dial(&self, peer_id: PeerId, addr: NetworkAddress) -> Result<Self::Outbound, Self::Error> {
         self.inner.dial(peer_id, addr)
     }

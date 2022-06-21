@@ -6,6 +6,7 @@ use futures::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt};
 use std::{convert::TryInto, io::Result};
 
 /// Read a u16 length prefixed frame from `Stream` into `buf`.
+#[tracing::instrument(skip(stream))]
 pub async fn read_u16frame<'stream, 'buf, 'c, TSocket>(
     mut stream: &'stream mut TSocket,
     buf: &'buf mut BytesMut,
@@ -22,6 +23,7 @@ where
 }
 
 /// Read a u16 (encoded as BE bytes) from `Stream` and return the length.
+#[tracing::instrument(skip(stream))]
 async fn read_u16frame_len<TSocket>(stream: &mut TSocket) -> Result<u16>
 where
     TSocket: AsyncRead + Unpin,
@@ -36,6 +38,7 @@ where
 /// The length of `buf` must be less than or equal to u16::max_value().
 ///
 /// Caller is responsible for flushing the write to `stream`.
+#[tracing::instrument(skip(stream))]
 pub async fn write_u16frame<'stream, 'buf, 'c, TSocket>(
     mut stream: &'stream mut TSocket,
     buf: &'buf [u8],
@@ -58,6 +61,7 @@ where
 /// Write a u16 `len` as BE bytes to `stream`.
 ///
 /// Caller is responsible for flushing the write to `stream`.
+#[tracing::instrument(skip(stream))]
 async fn write_u16frame_len<TSocket>(stream: &mut TSocket, len: u16) -> Result<()>
 where
     TSocket: AsyncWrite + Unpin,

@@ -39,6 +39,7 @@ pub struct TcpTransport {
 }
 
 impl TcpTransport {
+    #[tracing::instrument]
     fn apply_config(&self, stream: &TcpStream) -> ::std::io::Result<()> {
         if let Some(ttl) = self.ttl {
             stream.set_ttl(ttl)?;
@@ -59,6 +60,7 @@ impl Transport for TcpTransport {
     type Inbound = future::Ready<io::Result<TcpSocket>>;
     type Outbound = TcpOutbound;
 
+    #[tracing::instrument]
     fn listen_on(
         &self,
         addr: NetworkAddress,
@@ -83,6 +85,7 @@ impl Transport for TcpTransport {
         ))
     }
 
+    #[tracing::instrument]
     fn dial(&self, _peer_id: PeerId, addr: NetworkAddress) -> Result<Self::Outbound, Self::Error> {
         let protos = addr.as_slice();
 
@@ -134,6 +137,7 @@ impl Transport for TcpTransport {
 }
 
 /// Try to lookup the dns name, then filter addrs according to the `IpFilter`.
+#[tracing::instrument]
 async fn resolve_with_filter(
     ip_filter: IpFilter,
     dns_name: &str,
@@ -146,6 +150,7 @@ async fn resolve_with_filter(
 
 /// Note: we need to take ownership of this `NetworkAddress` (instead of just
 /// borrowing the `&[Protocol]` slice) so this future can be `Send + 'static`.
+#[tracing::instrument]
 pub async fn resolve_and_connect(addr: NetworkAddress) -> io::Result<TcpStream> {
     let protos = addr.as_slice();
 
@@ -181,6 +186,7 @@ pub async fn resolve_and_connect(addr: NetworkAddress) -> io::Result<TcpStream> 
     }
 }
 
+#[tracing::instrument]
 async fn connect_via_proxy(proxy_addr: String, addr: NetworkAddress) -> io::Result<TcpStream> {
     let protos = addr.as_slice();
 
@@ -218,6 +224,7 @@ async fn connect_via_proxy(proxy_addr: String, addr: NetworkAddress) -> io::Resu
     }
 }
 
+#[tracing::instrument]
 fn invalid_addr_error(addr: &NetworkAddress) -> io::Error {
     io::Error::new(
         io::ErrorKind::InvalidInput,
@@ -234,6 +241,7 @@ pub struct TcpListenerStream {
 impl Stream for TcpListenerStream {
     type Item = io::Result<(future::Ready<io::Result<TcpSocket>>, NetworkAddress)>;
 
+    #[tracing::instrument(skip(self))]
     fn poll_next(self: Pin<&mut Self>, context: &mut Context) -> Poll<Option<Self::Item>> {
         match self.inner.poll_accept(context) {
             Poll::Ready(Ok((socket, addr))) => {
@@ -261,6 +269,7 @@ pub struct TcpOutbound {
 impl Future for TcpOutbound {
     type Output = io::Result<TcpSocket>;
 
+    #[tracing::instrument(skip(self))]
     fn poll(mut self: Pin<&mut Self>, context: &mut Context) -> Poll<Self::Output> {
         let socket = ready!(Pin::new(&mut self.inner).poll(context))?;
         self.config.apply_config(&socket)?;
@@ -291,6 +300,7 @@ impl TcpSocket {
 }
 
 impl AsyncRead for TcpSocket {
+    #[tracing::instrument]
     fn poll_read(
         mut self: Pin<&mut Self>,
         context: &mut Context,
@@ -301,6 +311,7 @@ impl AsyncRead for TcpSocket {
 }
 
 impl AsyncWrite for TcpSocket {
+    #[tracing::instrument]
     fn poll_write(
         mut self: Pin<&mut Self>,
         context: &mut Context,
@@ -309,10 +320,12 @@ impl AsyncWrite for TcpSocket {
         Pin::new(&mut self.inner).poll_write(context, buf)
     }
 
+    #[tracing::instrument]
     fn poll_flush(mut self: Pin<&mut Self>, context: &mut Context) -> Poll<io::Result<()>> {
         Pin::new(&mut self.inner).poll_flush(context)
     }
 
+    #[tracing::instrument]
     fn poll_close(mut self: Pin<&mut Self>, context: &mut Context) -> Poll<io::Result<()>> {
         Pin::new(&mut self.inner).poll_close(context)
     }

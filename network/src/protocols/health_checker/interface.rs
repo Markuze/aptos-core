@@ -62,6 +62,7 @@ impl HealthCheckNetworkInterface {
 
     /// Disconnect a peer, and keep track of the associated state
     /// Note: This removes the peer outright for now until we add GCing, and historical state management
+    #[tracing::instrument(skip(self))]
     pub async fn disconnect_peer(
         &mut self,
         peer_network_id: PeerNetworkId,
@@ -76,11 +77,13 @@ impl HealthCheckNetworkInterface {
         result
     }
 
+    #[tracing::instrument(skip(self))]
     pub fn connected_peers(&self) -> Vec<PeerId> {
         self.app_data.keys()
     }
 
     /// Update state of peer globally
+    #[tracing::instrument(skip(self))]
     fn update_state(
         &self,
         peer_network_id: PeerNetworkId,

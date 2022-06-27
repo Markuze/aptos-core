@@ -143,7 +143,7 @@ impl<TSocket> Peer<TSocket>
 where
     TSocket: AsyncRead + AsyncWrite + Send + 'static,
 {
-    #[tracing::instrument(skip(connection,connection_notifs_tx))]
+    #[tracing::instrument(skip(connection,connection_notifs_tx) level="info")]
     pub fn new(
         network_context: NetworkContext,
         executor: Handle,
@@ -193,12 +193,12 @@ where
         }
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     fn remote_peer_id(&self) -> PeerId {
         self.connection_metadata.remote_peer_id
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info" target="PeerStart")]
     pub async fn start(mut self) {
         let remote_peer_id = self.remote_peer_id();
         trace!(
@@ -305,7 +305,7 @@ where
     // 2. The second channel is used to instruct the task to close the connection and terminate.
     // If outbound messages are queued when the task receives a close instruction, it discards
     // them and immediately closes the connection.
-    #[tracing::instrument(skip(writer))]
+    #[tracing::instrument(skip(writer) level="info")]
     fn start_writer_task(
         executor: &Handle,
         time_service: TimeService,
@@ -405,7 +405,7 @@ where
         (write_reqs_tx, close_tx)
     }
 
-    #[tracing::instrument(skip(self,write_reqs_tx))]
+    #[tracing::instrument(skip(self,write_reqs_tx) level="info")]
     async fn handle_inbound_message(
         &mut self,
         message: Result<NetworkMessage, ReadError>,
@@ -484,7 +484,7 @@ where
     /// Handle an inbound DirectSendMsg from the remote peer. There's not much to
     /// do here other than bump some counters and forward the message up to the
     /// PeerManager.
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     fn handle_inbound_direct_send(&mut self, message: DirectSendMsg) {
         let peer_id = self.remote_peer_id();
         let protocol_id = message.protocol_id;
@@ -519,7 +519,7 @@ where
         }
     }
 
-    #[tracing::instrument(skip(self, write_reqs_tx))]
+    #[tracing::instrument(skip(self, write_reqs_tx) level="info")]
     async fn handle_outbound_request(
         &mut self,
         request: PeerRequest,
@@ -596,14 +596,14 @@ where
         }
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     fn shutdown(&mut self, reason: DisconnectReason) {
         // Set the state of the actor to `State::ShuttingDown` to true ensures that the peer actor
         // will terminate and close the connection.
         self.state = State::ShuttingDown(reason);
     }
 
-    #[tracing::instrument(skip(self, writer_close_tx))]
+    #[tracing::instrument(skip(self, writer_close_tx) level="info")]
     async fn do_shutdown(mut self, writer_close_tx: oneshot::Sender<()>, reason: DisconnectReason) {
         let remote_peer_id = self.remote_peer_id();
 

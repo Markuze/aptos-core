@@ -101,7 +101,7 @@ impl NewNetworkSender for HealthCheckerNetworkSender {
 }
 
 impl HealthCheckerNetworkSender {
-   #[tracing::instrument(skip(self))]
+   #[tracing::instrument(skip(self) level="info")]
     pub async fn disconnect_peer(&mut self, peer_id: PeerId) -> Result<(), NetworkError> {
         self.inner.disconnect_peer(peer_id).await
     }
@@ -114,7 +114,7 @@ impl ApplicationNetworkSender<HealthCheckerMsg> for HealthCheckerNetworkSender {
     ///
     /// The rpc request can be canceled at any point by dropping the returned
     /// future.
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     async fn send_rpc(
         &self,
         recipient: PeerId,
@@ -182,7 +182,7 @@ impl HealthChecker {
         }
     }
 
-    #[tracing::instrument(skip(self) target="HealthCheckActorStart" level="debug")]
+    #[tracing::instrument(skip(self) target="HealthCheckActorStart" level="info")]
     pub async fn start(mut self) {
         let mut tick_handlers = FuturesUnordered::new();
         let span = tracing::span!(tracing::Level::INFO, "HealthCheckActor");
@@ -296,7 +296,7 @@ impl HealthChecker {
         );
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     fn handle_ping_request(
         &mut self,
         peer_id: PeerId,
@@ -325,7 +325,7 @@ impl HealthChecker {
         let _ = res_tx.send(Ok(message.into()));
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     async fn handle_ping_response(
         &mut self,
         peer_id: PeerId,
@@ -444,7 +444,7 @@ impl HealthChecker {
         }
     }
 
-    #[tracing::instrument(skip(network_tx))]
+    #[tracing::instrument(skip(network_tx) level="info")]
     async fn ping_peer(
         network_context: NetworkContext,
         network_tx: HealthCheckerNetworkSender,

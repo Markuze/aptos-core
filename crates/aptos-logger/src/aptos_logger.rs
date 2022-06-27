@@ -166,8 +166,8 @@ impl AptosDataBuilder {
         Self {
             channel_size: CHANNEL_SIZE,
             enable_backtrace: false,
-            level: Level::Info,
-            remote_level: Level::Info,
+            level: Level::Trace,
+            remote_level: Level::Trace,
             address: None,
             printer: Some(Box::new(StderrWriter)),
             is_async: false,

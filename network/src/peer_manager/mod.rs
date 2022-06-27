@@ -203,7 +203,7 @@ where
         }
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     pub fn update_connected_peers_metrics(&self) {
         let total = self.active_peers.len();
         let inbound = self
@@ -218,7 +218,7 @@ where
             .set(outbound as i64);
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     fn sample_connected_peers(&self) {
         // Sample final state at most once a minute, ensuring consistent ordering
         sample!(SampleRate::Duration(Duration::from_secs(60)), {
@@ -242,13 +242,13 @@ where
     }
 
     /// Get the [`NetworkAddress`] we're listening for incoming connections on
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     pub fn listen_addr(&self) -> &NetworkAddress {
         &self.listen_addr
     }
 
     /// Start listening on the set address and return a future which runs PeerManager
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     pub async fn start(mut self) {
         // Start listening for connections.
         info!(
@@ -279,7 +279,7 @@ where
         );
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     fn handle_connection_event(&mut self, event: TransportNotification<TSocket>) {
         trace!(
             NetworkSchema::new(&self.network_context),
@@ -434,7 +434,7 @@ where
         }
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     async fn handle_outbound_connection_request(&mut self, request: ConnectionRequest) {
         trace!(
             NetworkSchema::new(&self.network_context),
@@ -509,7 +509,7 @@ where
     }
 
     /// Sends an outbound request for `RPC` or `DirectSend` to the peer
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     async fn handle_outbound_request(&mut self, request: PeerManagerRequest) {
         trace!(
             NetworkSchema::new(&self.network_context),
@@ -549,7 +549,7 @@ where
         }
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     fn start_connection_listener(&mut self) {
         let transport_handler = self
             .transport_handler
@@ -565,7 +565,7 @@ where
     ///
     /// Returns `true` if the existing connection should be dropped and `false` if the new
     /// connection should be dropped.
-    #[tracing::instrument]
+    #[tracing::instrument(level="info")]
     fn simultaneous_dial_tie_breaking(
         own_peer_id: PeerId,
         remote_peer_id: PeerId,
@@ -583,7 +583,7 @@ where
         }
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     fn disconnect(&mut self, connection: Connection<TSocket>) {
         let network_context = self.network_context;
         let time_service = self.time_service.clone();
@@ -610,7 +610,7 @@ where
         self.executor.spawn(drop_fut);
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     fn add_peer(&mut self, connection: Connection<TSocket>) {
         let conn_meta = connection.metadata.clone();
         let peer_id = conn_meta.remote_peer_id;
@@ -716,7 +716,7 @@ where
     }
 
     /// Sends a `ConnectionNotification` to all event handlers, warns on failures
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     fn send_conn_notification(&mut self, peer_id: PeerId, notification: ConnectionNotification) {
         for handler in self.connection_event_handlers.iter_mut() {
             if let Err(e) = handler.push(peer_id, notification.clone()) {
@@ -735,7 +735,7 @@ where
         }
     }
 
-    #[tracing::instrument(skip(self))]
+    #[tracing::instrument(skip(self) level="info")]
     fn spawn_peer_network_events_handler(
         &self,
         peer_id: PeerId,
@@ -759,7 +759,7 @@ where
 }
 
 /// A task for consuming inbound network messages
-#[tracing::instrument]
+#[tracing::instrument(level="info")]
 fn handle_inbound_request(
     network_context: NetworkContext,
     inbound_event: PeerNotification,

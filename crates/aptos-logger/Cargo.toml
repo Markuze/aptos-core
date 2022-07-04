@@ -27,3 +27,4 @@ aptos-infallible = { path = "../aptos-infallible" }
 aptos-log-derive = { path = "../aptos-log-derive" }
 aptos-workspace-hack = { path = "../aptos-workspace-hack" }
 console-subscriber = "0.1.6"
+tracing-timing = "0.6.0"

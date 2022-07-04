@@ -7,12 +7,15 @@ use crate::{counters::STRUCT_LOG_COUNT, Event, Metadata};
 
 use once_cell::sync::OnceCell;
 use std::sync::Arc;
-use tracing_subscriber::Layer;
 use tracing_subscriber::prelude::*;
 use console_subscriber;
+use tracing::Dispatch;
+
+use backtrace::Backtrace;
 
 /// The global `Logger`
 static LOGGER: OnceCell<Arc<dyn Logger>> = OnceCell::new();
+static DISPATCH: OnceCell<Dispatch> = OnceCell::new();
 
 /// A trait encapsulating the operations required of a logger.
 pub trait Logger: Sync + Send + 'static {
@@ -48,13 +51,14 @@ pub fn set_global_logger(logger: Arc<dyn Logger>) {
         eprintln!("Global logger has already been set");
     }
 
-    /*
+
     let _ = tracing::subscriber::set_global_default(
         crate::tracing_adapter::TracingToAptosDataLayer
             .with_subscriber(tracing_subscriber::Registry::default()),
     );
     //tracing_subscriber::registry().with(crate::tracing_adapter::TracingToAptosDataLayer::layer()).init();
-     */
+
+    /*
     let console_layer = console_subscriber::ConsoleLayer::builder()
         .with_default_env()
         .spawn();
@@ -62,11 +66,31 @@ pub fn set_global_logger(logger: Arc<dyn Logger>) {
     tracing_subscriber::registry()
         .with(console_layer)
         .init();
+
+     */
 }
 
 /// Flush the global `Logger`
 pub fn flush() {
+    //print!("Heya!!");
+    //let bt = Backtrace::new();
+    //println!("{:?}", bt);
     if let Some(logger) = LOGGER.get() {
         logger.flush();
+    }
+}
+
+pub fn set_global_dispatch(dispatch: Dispatch) {
+    if DISPATCH.set(dispatch).is_err() {
+        eprintln!("Global Dispatcher has already been set");
+    }
+
+}
+
+pub fn get_timing_dispatch() -> Option<Dispatch> {
+    if let Some(dispatch) = DISPATCH.get() {
+        Some(dispatch.clone())
+    } else {
+        None
     }
 }

@@ -28,6 +28,8 @@ use std::{
     },
     thread,
 };
+use tracing::Dispatch;
+use tracing_timing::{Histogram, SubscriberDowncaster, group::*};
 
 const RUST_LOG: &str = "RUST_LOG";
 const RUST_LOG_REMOTE: &str = "RUST_LOG_REMOTE";
@@ -274,6 +276,7 @@ impl AptosDataBuilder {
                 printer: None,
                 filter: RwLock::new(filter),
                 formatter: self.custom_format.take().unwrap_or(default_format),
+                timing: AptosTimingSubscriber::new(),
             });
             let service = LoggerService {
                 receiver,
@@ -291,10 +294,12 @@ impl AptosDataBuilder {
                 printer: self.printer.take(),
                 filter: RwLock::new(filter),
                 formatter: self.custom_format.take().unwrap_or(default_format),
+                timing: AptosTimingSubscriber::new(),
             })
         };
 
         crate::logger::set_global_logger(logger.clone());
+        crate::logger::set_global_dispatch(logger.timing.get_timing_dispatch());
         logger
     }
 }
@@ -313,12 +318,35 @@ impl FilterPair {
     }
 }
 
+struct AptosTimingSubscriber {
+    dispatch: Dispatch,
+    downcatser: SubscriberDowncaster<ByName, ByMessage>,
+}
+
+impl AptosTimingSubscriber {
+    pub fn new() -> Self
+    {
+        let timing = tracing_timing::Builder::default()
+            .no_span_recursion()
+            .build( | | Histogram::new_with_max(500_000_000,
+                                                3).unwrap());
+        let downcast = timing.downcaster();
+
+        Self {
+            dispatch : Dispatch::new(timing),
+            downcatser: downcast,
+        }
+    }
+
+    pub fn get_timing_dispatch(&self) -> Dispatch { self.dispatch.clone() }
+}
 pub struct AptosData {
     enable_backtrace: bool,
     sender: Option<SyncSender<LoggerServiceEvent>>,
     printer: Option<Box<dyn Writer>>,
     filter: RwLock<FilterPair>,
     pub(crate) formatter: fn(&LogEntry) -> Result<String, fmt::Error>,
+    timing: AptosTimingSubscriber,
 }
 
 impl AptosData {
@@ -330,6 +358,8 @@ impl AptosData {
     pub fn new() -> AptosDataBuilder {
         Self::builder()
     }
+
+    pub fn get_timing_disptach() -> Option<Dispatch> { crate::logger::get_timing_dispatch() }
 
     pub fn init_for_testing() {
         if env::var(RUST_LOG).is_err() {

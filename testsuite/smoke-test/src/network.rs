@@ -136,6 +136,7 @@ async fn test_connection_limiting() {
             .unwrap()
             .unwrap_or(0)
     );
+    panic!("The End")
 }
 
 // Currently this test seems flaky: https://github.com/aptos-labs/aptos-core/issues/670

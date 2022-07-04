@@ -3,13 +3,13 @@
 
 //! Global logger definition and functions
 
-use crate::{counters::STRUCT_LOG_COUNT, Event, Metadata};
+use crate::{counters::STRUCT_LOG_COUNT, info, Event, Metadata};
 
+use console_subscriber;
 use once_cell::sync::OnceCell;
 use std::sync::Arc;
-use tracing_subscriber::prelude::*;
-use console_subscriber;
 use tracing::Dispatch;
+use tracing_subscriber::prelude::*;
 
 use backtrace::Backtrace;
 
@@ -51,30 +51,32 @@ pub fn set_global_logger(logger: Arc<dyn Logger>) {
         eprintln!("Global logger has already been set");
     }
 
-
     let _ = tracing::subscriber::set_global_default(
         crate::tracing_adapter::TracingToAptosDataLayer
             .with_subscriber(tracing_subscriber::Registry::default()),
     );
+
     //tracing_subscriber::registry().with(crate::tracing_adapter::TracingToAptosDataLayer::layer()).init();
 
     /*
-    let console_layer = console_subscriber::ConsoleLayer::builder()
-        .with_default_env()
-        .spawn();
+       On smoke tests - Each proccess of the swarm attemtps listenning on the same port -- Need a fix for smoke tests.
+       let console_layer = console_subscriber::ConsoleLayer::builder()
+           .with_default_env()
+           .spawn();
 
-    tracing_subscriber::registry()
-        .with(console_layer)
-        .init();
-
-     */
+       tracing_subscriber::registry()
+           .with(console_layer)
+           .init();
+    */
 }
 
 /// Flush the global `Logger`
 pub fn flush() {
-    //print!("Heya!!");
-    //let bt = Backtrace::new();
-    //println!("{:?}", bt);
+    println!("Heya!!");
+    info!("Heya!!");
+    let bt = Backtrace::new();
+    println!("{:?}", bt);
+    eprintln!("Serendipity!!");
     if let Some(logger) = LOGGER.get() {
         logger.flush();
     }
@@ -84,7 +86,6 @@ pub fn set_global_dispatch(dispatch: Dispatch) {
     if DISPATCH.set(dispatch).is_err() {
         eprintln!("Global Dispatcher has already been set");
     }
-
 }
 
 pub fn get_timing_dispatch() -> Option<Dispatch> {

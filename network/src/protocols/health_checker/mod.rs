@@ -45,10 +45,12 @@ use futures::{
     channel::oneshot,
     stream::{FuturesUnordered, StreamExt},
 };
+use once_cell::sync::OnceCell;
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 use serde::{Deserialize, Serialize};
 use short_hex_str::AsShortHexStr;
-use std::{collections::hash_map::Entry, time::Duration};
+use std::{collections::hash_map::Entry, fmt::Debug, time::Duration};
+use tracing::{dispatcher, span, Level};
 
 pub mod builder;
 mod interface;
@@ -178,6 +180,8 @@ impl HealthChecker {
     }
 
     pub async fn start(mut self) {
+        //thread_local!(static local_span: OnceCell<Span> = OnceCell::new());
+
         let mut tick_handlers = FuturesUnordered::new();
         info!(
             NetworkSchema::new(&self.network_context),
@@ -187,31 +191,52 @@ impl HealthChecker {
         let ticker = self.time_service.interval(self.ping_interval);
         tokio::pin!(ticker);
 
+        let net_ctx = self.network_context.to_string();
+        /*
+        let tid = format!("TID:{:?}", std::thread::current().id());
+        let span = span!(Level::TRACE, "HCA-start", span_id = &tid.as_str());
+        let _ = span.enter();
+        */
+
+        let d = ::aptos_logger::Logger::get_timing_disptach().unwrap();
+
         loop {
             futures::select! {
                 maybe_event = self.network_interface.next() => {
+
                     // Shutdown the HealthChecker when this network instance shuts
                     // down. This happens when the `PeerManager` drops.
                     let event = match maybe_event {
                         Some(event) => event,
                         None => break,
                     };
-
+                    dispatcher::with_default(&d, || {
+                        let span = span!(Level::TRACE, "HCA net-iface-next", ctx = &net_ctx.as_str());
+                        let _enter = span.enter();
+                        trace!("Start");
                     match event {
                         Event::NewPeer(metadata) => {
+                                trace!("NewPeer Enter");
                             self.network_interface.app_data().insert(
                                 metadata.remote_peer_id,
                                 HealthCheckData::new(self.round)
                             );
+                                trace!("NewPeer Exit");
                         }
                         Event::LostPeer(metadata) => {
+                                trace!("LostPeer Enter");
                             self.network_interface.app_data().remove(
                                 &metadata.remote_peer_id
                             );
+                                trace!("LostPeer Exit");
                         }
                         Event::RpcRequest(peer_id, msg, protocol, res_tx) => {
                             match msg {
-                                HealthCheckerMsg::Ping(ping) => self.handle_ping_request(peer_id, ping, protocol, res_tx),
+                                HealthCheckerMsg::Ping(ping) => {
+                                        trace!("Ping Enter");
+                                        self.handle_ping_request(peer_id, ping, protocol, res_tx);
+                                        trace!("Ping Exit");
+                                    },
                                 _ => {
                                     warn!(
                                         SecurityEvent::InvalidHealthCheckerMsg,
@@ -236,9 +261,18 @@ impl HealthChecker {
                             );
                             debug_assert!(false, "Unexpected network event");
                         }
+
                     }
+                        trace!("End");
+                        //enter.exit(); //span.exit()--method not found in Span ?!
+                    });
                 }
                 _ = ticker.select_next_some() => {
+                    //let span = span!(Level::TRACE, "HCA ticker-next", ctx = &net_ctx.as_str());
+
+                    dispatcher::with_default(&d, || {
+                        let span = span!(Level::TRACE, "HCA-ticker-next");
+                        let _enter = span.enter();
                     self.round += 1;
                     let connected = self.network_interface.connected_peers();
                     if connected.is_empty() {
@@ -249,11 +283,13 @@ impl HealthChecker {
                             self.network_context,
                             self.round
                         );
-                        continue
+                        //continue
+                            return
                     }
-
+                    trace!("ticker-next start");
                     for peer_id in connected {
                         let nonce = self.rng.gen::<u32>();
+                            /*
                         trace!(
                             NetworkSchema::new(&self.network_context),
                             round = self.round,
@@ -263,6 +299,7 @@ impl HealthChecker {
                             self.round,
                             nonce
                         );
+                        */
 
                         tick_handlers.push(Self::ping_peer(
                             self.network_context,
@@ -273,6 +310,9 @@ impl HealthChecker {
                             self.ping_timeout,
                         ));
                     }
+                        trace!("ticker-next end");
+                       //  enter.exit();
+                    });
                 }
                 res = tick_handlers.select_next_some() => {
                     let (peer_id, round, nonce, ping_result) = res;

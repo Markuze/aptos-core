@@ -9,6 +9,7 @@ use crate::{
         PROCESSED_STRUCT_LOG_COUNT, SENT_STRUCT_LOG_BYTES, SENT_STRUCT_LOG_COUNT,
         STRUCT_LOG_PARSE_ERROR_COUNT, STRUCT_LOG_QUEUE_ERROR_COUNT, STRUCT_LOG_SEND_ERROR_COUNT,
     },
+    info,
     logger::Logger,
     struct_log::TcpWriter,
     Event, Filter, Key, Level, LevelFilter, Metadata,
@@ -17,19 +18,22 @@ use aptos_infallible::RwLock;
 use backtrace::Backtrace;
 use chrono::{SecondsFormat, Utc};
 use once_cell::sync::Lazy;
+use rand::{distributions::Alphanumeric, Rng}; // 0.8
 use serde::Serialize;
 use std::{
     collections::BTreeMap,
     env, fmt,
+    fs::File,
     io::Write,
     sync::{
         mpsc::{self, Receiver, SyncSender},
         Arc,
     },
     thread,
+    time::Duration,
 };
 use tracing::Dispatch;
-use tracing_timing::{Histogram, SubscriberDowncaster, group::*};
+use tracing_timing::{group::*, Histogram, SubscriberDowncaster};
 
 const RUST_LOG: &str = "RUST_LOG";
 const RUST_LOG_REMOTE: &str = "RUST_LOG_REMOTE";
@@ -300,6 +304,8 @@ impl AptosDataBuilder {
 
         crate::logger::set_global_logger(logger.clone());
         crate::logger::set_global_dispatch(logger.timing.get_timing_dispatch());
+        logger.timing.start_timing_reporting();
+
         logger
     }
 }
@@ -324,21 +330,73 @@ struct AptosTimingSubscriber {
 }
 
 impl AptosTimingSubscriber {
-    pub fn new() -> Self
-    {
+    pub fn new() -> Self {
         let timing = tracing_timing::Builder::default()
             .no_span_recursion()
-            .build( | | Histogram::new_with_max(500_000_000,
-                                                3).unwrap());
+            .build(|| Histogram::new_with_max(500_000_000, 3).unwrap());
         let downcast = timing.downcaster();
 
         Self {
-            dispatch : Dispatch::new(timing),
+            dispatch: Dispatch::new(timing),
             downcatser: downcast,
         }
     }
 
-    pub fn get_timing_dispatch(&self) -> Dispatch { self.dispatch.clone() }
+    pub fn start_timing_reporting(&self) -> Result<(), std::io::Error> {
+        let downcaster = self.downcatser.clone();
+        let dispatch = self.dispatch.clone();
+        let file_name: String = rand::thread_rng()
+            .sample_iter(&Alphanumeric)
+            .take(8)
+            .map(char::from)
+            .collect();
+
+        let mut path = "/tmp/timing/".to_owned();
+        path.push_str(&file_name);
+
+        let mut output = File::create(path)?;
+
+        std::thread::spawn(move || {
+            let mut dump: String = "Hello".to_owned();
+
+            loop {
+                std::thread::sleep(Duration::from_millis(500));
+
+                downcaster.downcast(&dispatch).unwrap().force_synchronize();
+                downcaster
+                    .downcast(&dispatch)
+                    .unwrap()
+                    .with_histograms(|hs| {
+                        let mut i = 0;
+
+                        for (span_group, sg) in hs {
+                            for (event_group, es) in sg {
+                                // make sure we see the latest samples:
+                                //h.refresh();
+                                // print the median:
+                                let str = format!(
+                                    "{} {} -> {}: {}ns\n",
+                                    i,
+                                    span_group,
+                                    event_group,
+                                    es.value_at_quantile(0.5)
+                                )
+                                .to_owned();
+                                i += 1;
+                                dump.push_str(&str);
+                            }
+                        }
+                    });
+                write!(output, "{}\n", dump.as_str());
+                dump = "\nNext\n".to_owned();
+            }
+        });
+        Ok(())
+    }
+
+    pub fn get_timing_dispatch(&self) -> Dispatch {
+        self.dispatch.clone()
+    }
 }
 pub struct AptosData {
     enable_backtrace: bool,
@@ -359,7 +417,9 @@ impl AptosData {
         Self::builder()
     }
 
-    pub fn get_timing_disptach() -> Option<Dispatch> { crate::logger::get_timing_dispatch() }
+    pub fn get_timing_disptach() -> Option<Dispatch> {
+        crate::logger::get_timing_dispatch()
+    }
 
     pub fn init_for_testing() {
         if env::var(RUST_LOG).is_err() {

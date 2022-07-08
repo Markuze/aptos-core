@@ -200,6 +200,7 @@ impl HealthChecker {
 
         let d = ::aptos_logger::Logger::get_timing_disptach().unwrap();
 
+        dispatcher::with_default(&d, ||
         loop {
             futures::select! {
                 maybe_event = self.network_interface.next() => {
@@ -210,8 +211,8 @@ impl HealthChecker {
                         Some(event) => event,
                         None => break,
                     };
-                    dispatcher::with_default(&d, || {
-                        let span = span!(Level::TRACE, "HCA net-iface-next", ctx = &net_ctx.as_str());
+
+                        let span = span!(Level::TRACE, "HCA net-iface-next");
                         let _enter = span.enter();
                         trace!("Start");
                     match event {
@@ -265,12 +266,12 @@ impl HealthChecker {
                     }
                         trace!("End");
                         //enter.exit(); //span.exit()--method not found in Span ?!
-                    });
+                    //});
                 }
                 _ = ticker.select_next_some() => {
                     //let span = span!(Level::TRACE, "HCA ticker-next", ctx = &net_ctx.as_str());
 
-                    dispatcher::with_default(&d, || {
+                    //dispatcher::with_default(&d, || {
                         let span = span!(Level::TRACE, "HCA-ticker-next");
                         let _enter = span.enter();
                     self.round += 1;
@@ -283,8 +284,8 @@ impl HealthChecker {
                             self.network_context,
                             self.round
                         );
-                        //continue
-                            return
+                        continue
+
                     }
                     trace!("ticker-next start");
                     for peer_id in connected {
@@ -312,7 +313,7 @@ impl HealthChecker {
                     }
                         trace!("ticker-next end");
                        //  enter.exit();
-                    });
+                    //});
                 }
                 res = tick_handlers.select_next_some() => {
                     let (peer_id, round, nonce, ping_result) = res;
@@ -323,6 +324,7 @@ impl HealthChecker {
         warn!(
             NetworkSchema::new(&self.network_context),
             "{} Health checker actor terminated", self.network_context
+        );
         );
     }
 

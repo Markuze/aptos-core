@@ -9,8 +9,16 @@ use once_cell::sync::OnceCell;
 use std::sync::Arc;
 use tracing_subscriber::prelude::*;
 
+use rand::distributions::{Alphanumeric, DistString};
+use tracing_appender::non_blocking::WorkerGuard;
+use tracing_subscriber::fmt::layer;
+use tracing_flame::{FlameLayer, FlushGuard};
+use std::{fs::File, io::BufWriter};
+use tracing_appender::rolling::RollingFileAppender;
+
 /// The global `Logger`
 static LOGGER: OnceCell<Arc<dyn Logger>> = OnceCell::new();
+static GUARDS: OnceCell<Arc<(WorkerGuard, FlushGuard<RollingFileAppender>)>> = OnceCell::new();
 
 /// A trait encapsulating the operations required of a logger.
 pub trait Logger: Sync + Send + 'static {
@@ -48,6 +56,9 @@ pub fn set_global_logger(logger: Arc<dyn Logger>, console_port: Option<u16>) {
         return;
     }
 
+    let string = Alphanumeric.sample_string(&mut rand::thread_rng(), 8);
+    println!("My Rand: {}", string);
+
     /*
      * if console_port is set all tracing::log are captured by the tokio-tracing infrastructure.
      * else aptos-logger intercepts all tracing::log events
@@ -60,7 +71,21 @@ pub fn set_global_logger(logger: Arc<dyn Logger>, console_port: Option<u16>) {
                 .server_addr(([0, 0, 0, 0], p))
                 .spawn();
 
-            tracing_subscriber::registry().with(console_layer).init();
+            let file_appender = tracing_appender::rolling::minutely("/tmp", format!("{}{}", string, ".log"));
+            let file_appender2 = tracing_appender::rolling::minutely("/tmp", format!("{}.folded", string));
+            let (non_blocking, appender_guard) = tracing_appender::non_blocking(file_appender);
+            let mut flame_layer = FlameLayer::new(file_appender2);//.unwrap();
+            let flame_guard= flame_layer.flush_on_drop();
+            GUARDS.set(Arc::new((appender_guard, flame_guard))).expect("This shouldn't Fail");
+
+            flame_layer = flame_layer.with_threads_collapsed(true).with_file_and_line(false);
+
+            tracing_subscriber::registry()
+                .with(console_layer)
+                .with(tracing_subscriber::fmt::layer().with_writer(non_blocking))
+                .with(flame_layer)
+                .init();
+
             return;
         }
     }

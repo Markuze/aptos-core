@@ -645,12 +645,15 @@ dependencies = [
  "once_cell",
  "pretty_assertions",
  "prometheus",
+ "rand 0.8.5",
  "serde 1.0.137",
  "serde_json",
  "strum",
  "strum_macros",
  "tokio",
  "tracing",
+ "tracing-appender",
+ "tracing-flame",
  "tracing-subscriber",
 ]
 
@@ -8882,6 +8885,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "tracing-appender"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "09d48f71a791638519505cefafe162606f706c25592e4bde4d97600c0195312e"
+dependencies = [
+ "crossbeam-channel",
+ "time 0.3.9",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "tracing-attributes"
 version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8900,6 +8914,17 @@ checksum = "f54c8ca710e81886d498c2fd3331b56c93aa248d49de2222ad2742247c60072f"
 dependencies = [
  "lazy_static 1.4.0",
  "valuable",
+]
+
+[[package]]
+name = "tracing-flame"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0bae117ee14789185e129aaee5d93750abe67fdc5a9a62650452bfe4e122a3a9"
+dependencies = [
+ "lazy_static 1.4.0",
+ "tracing",
+ "tracing-subscriber",
 ]
 
 [[package]]

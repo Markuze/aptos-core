@@ -71,6 +71,10 @@ pub fn set_global_logger(logger: Arc<dyn Logger>, console_port: Option<u16>) {
                 .server_addr(([0, 0, 0, 0], p))
                 .spawn();
 
+            //Add a thread:
+            // 1. rm all files in list
+            // 2. read all files in dir into list
+            // sleep 5 min.
             let file_appender = tracing_appender::rolling::minutely("/tmp", format!("{}{}", string, ".log"));
             let file_appender2 = tracing_appender::rolling::minutely("/tmp", format!("{}.folded", string));
             let (non_blocking, appender_guard) = tracing_appender::non_blocking(file_appender);

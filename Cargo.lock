@@ -707,7 +707,7 @@ dependencies = [
  "network",
  "once_cell",
  "proptest",
- "rand 0.7.3",
+ "rand 0.8.5",
  "rayon",
  "serde 1.0.137",
  "serde_json",
@@ -715,7 +715,9 @@ dependencies = [
  "storage-interface",
  "thiserror",
  "tokio",
+ "tokio-metrics",
  "tokio-stream",
+ "tracing-appender",
  "vm-validator",
 ]
 
@@ -8668,6 +8670,17 @@ dependencies = [
  "proc-macro2 1.0.39",
  "quote 1.0.18",
  "syn 1.0.95",
+]
+
+[[package]]
+name = "tokio-metrics"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bcb585a0069b53171684e22d5255984ec30d1c7304fd0a4a9a603ffd8c765cdd"
+dependencies = [
+ "futures-util",
+ "pin-project-lite",
+ "tokio",
 ]
 
 [[package]]

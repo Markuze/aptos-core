@@ -18,9 +18,14 @@ use futures::channel::mpsc::{self, Receiver, UnboundedSender};
 use mempool_notifications::MempoolNotificationListener;
 use network::application::storage::PeerMetadataStorage;
 use std::{collections::HashMap, sync::Arc};
+use futures::executor;
 use storage_interface::DbReader;
 use tokio::runtime::{Builder, Handle, Runtime};
+use tokio_metrics::*;
 use vm_validator::vm_validator::{TransactionValidation, VMValidator};
+use tracing_appender::rolling::RollingFileAppender;
+use rand::distributions::Alphanumeric;
+use std::time::Duration;
 
 /// Bootstrap of SharedMempool.
 /// Creates a separate Tokio Runtime that runs the following routines:
@@ -63,25 +68,73 @@ pub(crate) fn start_shared_mempool<V>(
         peer_metadata_storage,
     );
 
-    executor.spawn(coordinator(
-        smp,
-        executor.clone(),
-        all_network_events,
-        client_events,
-        quorum_store_requests,
-        mempool_listener,
-        mempool_reconfig_events,
-    ));
+    println!("Hello! :)");
+    let handle_clone = executor.clone();
 
-    executor.spawn(gc_coordinator(
-        mempool.clone(),
-        config.mempool.system_transaction_gc_interval_ms,
-    ));
+    let system_transaction_gc_interval_ms = config.mempool.system_transaction_gc_interval_ms;
+    let mempool_snapshot_interval_secs = config.mempool.mempool_snapshot_interval_secs;
 
-    executor.spawn(snapshot_job(
-        mempool,
-        config.mempool.mempool_snapshot_interval_secs,
-    ));
+    executor.spawn(async move {
+        let coordinator_monitor = tokio_metrics::TaskMonitor::new();
+        let gc_monitor = tokio_metrics::TaskMonitor::new();
+        let snapshot_monitor = tokio_metrics::TaskMonitor::new();
+
+        println!("Hello! Instrumenting:)");
+        coordinator_monitor.instrument(coordinator(
+            smp,
+            handle_clone.clone(),
+            all_network_events,
+            client_events,
+            quorum_store_requests,
+            mempool_listener,
+            mempool_reconfig_events,
+        ));
+
+        gc_monitor.instrument(gc_coordinator(
+            mempool.clone(), system_transaction_gc_interval_ms,
+        ));
+
+        snapshot_monitor.instrument(snapshot_job(
+            mempool, mempool_snapshot_interval_secs,
+        ));
+
+        let runtime_monitor = tokio_metrics::RuntimeMonitor::new(&handle_clone);
+        let string = Alphanumeric.sample_string(&mut rand::thread_rng(), 8);
+
+        tokio::task::Builder::new()
+            .name("Mempool Task Metrics Reporter")
+            .spawn(async move {
+            let coodrinator_intervals = coordinator_monitor.intervals();
+            let gc_intervals = gc_monitor.intervals();
+            let snapshot_intyervals = snapshot_monitor.intervals();
+
+            let intervals = coodrinator_intervals.zip(gc_intervals.zip(snapshot_intyervals));
+
+            let file_appender = tracing_appender::rolling::minutely("/tmp", format!("{}.task_metrics", string));
+            let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
+            for (coordinator, (gc, snapshot)) in intervals {
+                non_blocking.write_fmt("coordinator = {:#?}", coordinator);
+                non_blocking.write_fmt("gc = {:#?}", gc);
+                non_blocking.write_fmt("snapshot = {:#?}", snapshot);
+                tokio::time::sleep(Duration::from_millis(2000)).await;
+            }
+        });
+
+        tokio::task::Builder::new()
+            .name("Mempool Runtime Metrics Reporter")
+            .spawn(async move {
+                let file_appender = tracing_appender::rolling::minutely("/tmp", format!("{}.runtime_metrics", string));
+                let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+
+                for interval in runtime_monitor.intervals() {
+                // pretty-print the metric interval
+                non_blocking.write_fmt("{:?}", interval);
+                // wait 2s
+                tokio::time::sleep(Duration::from_millis(2000)).await;
+            }
+        });
+    });
 }
 
 pub fn bootstrap(

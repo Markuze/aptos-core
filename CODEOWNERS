@@ -1,9 +1,9 @@
 # **Please** keep this file ordered alphabetically by directory paths.
 
-# Owners for the `/api` directory and all its subdirectories. 
+# Owners for the `/api` directory and all its subdirectories.
 /api/ @banool @gregnazario
 
-# Owners for the `/aptos-move` directory and its subdirectories:`aptos-gas`, `aptos-vm`, `framework` and `framework/aptos-stdlib/sources/cryptography`. 
+# Owners for the `/aptos-move` directory and its subdirectories:`aptos-gas`, `aptos-vm`, `framework` and `framework/aptos-stdlib/sources/cryptography`.
 /aptos-move/aptos-gas/ @vgao1996
 /aptos-move/aptos-vm/ @davidiw @wrwg @zekun000
 /aptos-move/framework/ @davidiw @movekevin @wrwg
@@ -21,7 +21,7 @@
 # Owners for quorum store.
 /consensus/src/quorum_store/ @bchocho @sasha8 @gelash
 
-# Owners for the `/crates/aptos` directory and all its subdirectories. 
+# Owners for the `/crates/aptos` directory and all its subdirectories.
 /crates/aptos @gregnazario
 
 # Owners for the `/crates/aptos-crypto*` directories.
@@ -66,3 +66,9 @@
 
 # Owners for the `/terraform` directory and all its subdirectories.
 /terraform/ @aptos-labs/prod-eng
+
+# Owners for the `Network Stack`
+/networking @alexm
+
+# Owners for the aptos-logger crate
+/crates/aptos-logger @alexm

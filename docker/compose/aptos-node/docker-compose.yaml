@@ -35,6 +35,21 @@ services:
       - 6181
       - 9101
       - 80
+  haproxy:
+    build: ./haproxy
+    networks:
+      shared:
+    ports:
+      - "6180:6180"
+      - "6181:6181"
+      - "80:8080"
+      - "9101:9101"
+    expose:
+      - 6180
+      - 6181
+      - 9101
+      - 80
+    command: ["sh", "-c", "ulimit -n 1048576 && exec haproxy -f /usr/local/etc/haproxy/haproxy.cfg"]
 
 networks:
   shared:
